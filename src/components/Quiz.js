@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -10,7 +10,6 @@ import {
   Box,
   LinearProgress,
 } from '@mui/material';
-
 // Sample quiz data
 export const quizData = {
   general: [
@@ -33,24 +32,12 @@ function Quiz() {
   const navigate = useNavigate();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(30); // 30 seconds per question
+  const [timeLeft, setTimeLeft] = useState(30);
 
   const questions = quizData[category] || [];
 
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      handleNext();
-    }
-  }, [timeLeft]);
-
-  const handleAnswer = (answer) => {
-    setAnswers({ ...answers, [currentQuestion]: answer });
-  };
-
-  const handleNext = () => {
+  // Memoize handleNext with useCallback
+  const handleNext = useCallback(() => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setTimeLeft(30);
@@ -62,11 +49,24 @@ function Quiz() {
       }));
       navigate('/results');
     }
+  }, [currentQuestion, questions.length, category, answers, navigate]); // Add all dependencies
+
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      handleNext();
+    }
+  }, [timeLeft, handleNext]); // Now handleNext is a stable dependency
+
+  const handleAnswer = (answer) => {
+    setAnswers({ ...answers, [currentQuestion]: answer });
   };
 
   if (!category || !quizData[category.toLowerCase()]) {
     return <Typography>Invalid category. Please select a valid quiz.</Typography>;
-  };
+  }
 
   if (!questions.length) return <Typography>Category not found</Typography>;
 
@@ -104,4 +104,5 @@ function Quiz() {
     </Container>
   );
 }
+
 export default Quiz;
